@@ -6,22 +6,31 @@ from __future__ import annotations
 
 from typing import Iterable, List, Dict, Sequence
 import heapq
+import sys
 
 
 def tag_emphasis(
     words: Sequence[Dict], emphasized: Iterable[str]
 ) -> List[Dict]:
     """Mark words that should be emphasized (case-insensitive, multi-hit)."""
+    print(f"[CAPTIONS] Tagging emphasis - Total words: {len(words)}", file=sys.stderr)
     emph_set = {w.lower().rstrip(",") for w in emphasized}
+    print(f"[CAPTIONS] Emphasis words set: {emph_set}", file=sys.stderr)
     tagged = []
+    emphasis_count = 0
     for w in words:
         text = w.get("word", "").rstrip(",")
+        is_emphasized = text.lower() in emph_set
+        if is_emphasized:
+            emphasis_count += 1
+            print(f"[CAPTIONS] Tagged word as emphasized: '{text}'", file=sys.stderr)
         tagged.append(
             {
                 **w,
-                "emphasized": text.lower() in emph_set,
+                "emphasized": is_emphasized,
             }
         )
+    print(f"[CAPTIONS] Emphasis tagging complete - {emphasis_count} words emphasized out of {len(words)}", file=sys.stderr)
     return tagged
 
 
@@ -170,7 +179,9 @@ def detect_emphasis_words(words: Sequence[Dict], max_words: int = 6) -> List[str
     # Drop any words that fell below 1 after penalties
     filtered = {w: s for w, s in scores.items() if s > 1}
     top = heapq.nlargest(max_words, filtered.items(), key=lambda kv: (kv[1], kv[0]))
-    return [word for word, _ in top]
+    result = [word for word, _ in top]
+    print(f"[CAPTIONS] Detected emphasis words: {result}", file=sys.stderr)
+    return result
 
 
 def group_words(
@@ -184,13 +195,22 @@ def group_words(
       - words count exceeds max_words
       - time gap between consecutive words > max_gap seconds
     """
+    print(f"[CAPTIONS] Grouping words into captions - Total words: {len(words)}, Max words per caption: {max_words}, Max gap: {max_gap}s", file=sys.stderr)
     captions: List[Dict] = []
     current: List[Dict] = []
+    gap_breaks = 0
+    word_limit_breaks = 0
 
-    for w in words:
+    for w_idx, w in enumerate(words, 1):
         if current:
             gap = w["start"] - current[-1]["end"]
             if len(current) >= max_words or gap > max_gap:
+                if len(current) >= max_words:
+                    word_limit_breaks += 1
+                    print(f"[CAPTIONS] Caption break at word {w_idx}: word limit reached", file=sys.stderr)
+                else:
+                    gap_breaks += 1
+                    print(f"[CAPTIONS] Caption break at word {w_idx}: gap ({gap:.2f}s) > max ({max_gap}s)", file=sys.stderr)
                 captions.append(
                     {
                         "words": current,
@@ -198,6 +218,7 @@ def group_words(
                         "end": current[-1]["end"],
                     }
                 )
+                print(f"[CAPTIONS] Caption {len(captions)}: {len(current)} words, time {current[0]['start']:.2f}s - {current[-1]['end']:.2f}s", file=sys.stderr)
                 current = []
         current.append(w)
 
@@ -209,5 +230,7 @@ def group_words(
                 "end": current[-1]["end"],
             }
         )
+        print(f"[CAPTIONS] Caption {len(captions)}: {len(current)} words, time {current[0]['start']:.2f}s - {current[-1]['end']:.2f}s", file=sys.stderr)
 
+    print(f"[CAPTIONS] Caption grouping complete - Total captions: {len(captions)}, Gap breaks: {gap_breaks}, Word limit breaks: {word_limit_breaks}", file=sys.stderr)
     return captions

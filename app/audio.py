@@ -9,6 +9,8 @@ import subprocess
 from pathlib import Path
 from typing import Optional
 import time
+import os
+import sys
 
 def extract_audio(video_path: str | Path, output_dir: str | Path) -> Path:
     """
@@ -16,10 +18,14 @@ def extract_audio(video_path: str | Path, output_dir: str | Path) -> Path:
 
     Returns the path to the extracted WAV file.
     """
+    print(f"[AUDIO] Starting audio extraction - Video: {video_path}", file=sys.stderr)
     video_path = Path(video_path)
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
+    print(f"[AUDIO] Output directory ready: {output_dir}", file=sys.stderr)
+    
     audio_path = output_dir / f"{video_path.stem}_{int(time.time()*1000)}.wav"
+    print(f"[AUDIO] Output audio file: {audio_path}", file=sys.stderr)
 
     cmd = [
         "ffmpeg",
@@ -35,7 +41,13 @@ def extract_audio(video_path: str | Path, output_dir: str | Path) -> Path:
         "1",
         str(audio_path),
     ]
-    subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    print(f"[AUDIO] Executing FFmpeg extraction command...", file=sys.stderr)
+    try:
+        subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        print(f"[AUDIO] Audio extraction completed successfully - {audio_path}", file=sys.stderr)
+    except subprocess.CalledProcessError as e:
+        print(f"[AUDIO] ERROR - FFmpeg extraction failed with code {e.returncode}", file=sys.stderr)
+        raise
     return audio_path
 
 
