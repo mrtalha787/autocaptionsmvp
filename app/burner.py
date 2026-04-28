@@ -22,11 +22,11 @@ def render_captions(
     captions: List[Dict],
     output_path: str | Path,
     pos_x: float = 0.5,
-    pos_y: float = 0.85,
+    pos_y: float = 0.5,
     fast_mode: bool = True,
     target_width: int = 1280,
     font_name: str = "Arial",
-    font_size: int = 120,
+    font_size: int = 110,
     font_color: str = "#00FFFF",
     style_preset: str = "classic",
     render_method: str = "ass",
@@ -52,19 +52,9 @@ def render_captions(
     """
     print(f"[BURNER] Starting caption rendering - Method: {render_method}, Video: {video_path}", file=sys.stderr)
     
-    # Use TextClip renderer if requested
+    # Remove MoviePy TextClip renderer (not supported)
     if render_method == "textclip":
-        return render_text_clips(
-            video_path,
-            captions,
-            output_path,
-            pos_x=pos_x,
-            pos_y=pos_y,
-            font_name=font_name,
-            font_size=font_size,
-            font_color=font_color,
-            style_preset=style_preset,
-        )
+        raise NotImplementedError("MoviePy/TextClip rendering is no longer supported. Use render_method='ass' for FFmpeg-based rendering.")
     
     # Default to ASS subtitle rendering
     return _render_ass_captions(
@@ -87,11 +77,11 @@ def _render_ass_captions(
     captions: List[Dict],
     output_path: str | Path,
     pos_x: float = 0.5,
-    pos_y: float = 0.85,
+    pos_y: float = 0.5,
     fast_mode: bool = True,
     target_width: int = 1280,
     font_name: str = "Arial",
-    font_size: int = 120,
+    font_size: int = 110,
     font_color: str = "#00FFFF",
     style_preset: str = "classic",
 ) -> Dict:

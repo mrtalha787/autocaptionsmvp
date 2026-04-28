@@ -22,10 +22,21 @@ def _hex_to_bgr(hex_color: str) -> str:
 
 def _get_style_preset(preset: str, fontsize: int, color_bgr: str, fontname: str) -> Dict:
     """Get style dictionary based on preset name."""
+    # Map common font names to Windows system fonts
+    font_map = {
+        "Arial": "Arial",
+        "Times New Roman": "Times New Roman",
+        "Courier New": "Courier New",
+        "Verdana": "Verdana",
+        "Georgia": "Georgia",
+    }
+    # Use mapped name or fallback to the requested font
+    mapped_font = font_map.get(fontname, fontname)
+    
     base_style = {
         "Name": "Default",
-        "Fontname": fontname,
-        "Fontsize": fontsize,
+        "Fontname": mapped_font,
+        "Fontsize": int(fontsize),
         "PrimaryColour": color_bgr,
         "SecondaryColour": "&H00FFFFFF",
         "BackColour": "&H00000000",
@@ -84,7 +95,7 @@ def build_ass(
     path: Path,
     pos_xy: Optional[Tuple[float, float]] = None,
     font_name: str = "Arial",
-    font_size: int = 120,
+    font_size: int = 110,
     font_color: str = "#00FFFF",
     style_preset: str = "classic",
 ) -> Path:
@@ -142,9 +153,16 @@ def build_ass(
         "MarginV",
         "Encoding",
     ]
-    fmt_line = ",".join(["Style"] + fields)
+    fmt_line = "Format: " + ",".join(fields)
     lines.append(fmt_line)
-    style_line = ",".join(str(style.get(f, 0)) for f in fields)
+    style_values = [style.get(f, 0) for f in fields]
+    style_line = "Style: " + ",".join(str(v) for v in style_values)
+    
+    # Debug logging for style line
+    print(f"[ASS_RENDERER] Style format line: {fmt_line}", file=sys.stderr)
+    print(f"[ASS_RENDERER] Style line: {style_line}", file=sys.stderr)
+    print(f"[ASS_RENDERER] Font in style: {style.get('Fontname')} | Size: {style.get('Fontsize')}pt", file=sys.stderr)
+    
     lines.append(style_line)
     lines.append("")
     lines.append("[Events]")

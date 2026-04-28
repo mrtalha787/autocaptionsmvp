@@ -22,7 +22,7 @@ from app.burner import render_captions
 from app.auth import authenticate_user, register_user, load_users, save_users
 from app.audio import extract_audio, ensure_storage_dirs
 
-MAX_QUEUE = 30
+MAX_QUEUE = 10  # Max pending jobs per user
 STORAGE_DIR = BASE_DIR / "storage"
 USERS_FILE = STORAGE_DIR / "users.json"
 
@@ -259,7 +259,7 @@ def _process_queue(username: str):
                     )
                     # Handle both old and new job formats for position
                     pos_x = job.get('pos_x') or job.get('position_x', 0.5)
-                    pos_y = job.get('pos_y') or job.get('position_y', 0.85)
+                    pos_y = job.get('pos_y') or job.get('position_y', 0.5)
                     burn_result = render_captions(
                         video_path,
                         captions,
@@ -268,7 +268,7 @@ def _process_queue(username: str):
                         pos_y=pos_y,
                         fast_mode=job["fast_mode"],
                         font_name=job.get("font_name", "Arial"),
-                        font_size=job.get("font_size", 120),
+                        font_size=job.get("font_size", 110),
                         font_color=job.get("font_color", "#00FFFF"),
                         style_preset=job.get("style_preset", "classic"),
                         render_method=job.get("render_method", "ass"),
@@ -359,13 +359,13 @@ st.sidebar.write(f"Total jobs: {len(user_jobs)}")
 st.sidebar.write(f"Pending: {pending_count}")
 st.sidebar.write(f"Queue limit: {MAX_QUEUE}")
 
-st.subheader("Build your queue (max 30 videos per session)")
+st.subheader("Build your queue (max 10 videos per session)")
 uploaded_files = st.file_uploader(
     "Upload one or more videos", type=["mp4", "mov", "mkv"], accept_multiple_files=True
 )
 
 pos_x = st.slider("Horizontal position (%)", 0, 100, 50, step=1)
-pos_y = st.slider("Vertical position (%)", 0, 100, 85, step=1)
+pos_y = st.slider("Vertical position (%)", 0, 100, 50, step=1)
 
 fast_mode = st.checkbox("Fast render (ultrafast preset, 1280px cap)", value=True)
 
@@ -393,7 +393,7 @@ with cust_col1:
         help="Select caption font family"
     )
 with cust_col2:
-    font_size = st.slider("Font size", 60, 200, 120, step=5, help="Caption size in pixels")
+    font_size = st.slider("Font size", 60, 180, 110, step=5, help="Caption size in pixels")
 with cust_col3:
     font_color = st.color_picker("Font color", "#00FFFF", help="Select caption color")
 
@@ -464,7 +464,7 @@ st.subheader("Queue status")
 user_jobs = _get_user_jobs(st.session_state.username)
 
 if not user_jobs:
-    st.info("No videos queued yet. Upload up to 30 and click Add to queue.")
+    st.info("No videos queued yet. Upload up to 10 and click Add to queue.")
 else:
     for idx, job in enumerate(user_jobs, start=1):
         label = f"{idx}. {job['filename']} — {job['status']}"
@@ -472,7 +472,7 @@ else:
         with st.expander(label, expanded=expanded):
             # Handle both old and new job formats
             pos_x = job.get('pos_x') or job.get('position_x', 0.5)
-            pos_y = job.get('pos_y') or job.get('position_y', 0.85)
+            pos_y = job.get('pos_y') or job.get('position_y', 0.5)
             st.write(
                 f"Fast: {job.get('fast_mode', True)} | "
                 f"Pos: {int(pos_x*100)}%, {int(pos_y*100)}% | "
@@ -481,7 +481,7 @@ else:
             
             # Show caption styling
             font_name = job.get("font_name", "Arial")
-            font_size = job.get("font_size", 120)
+            font_size = job.get("font_size", 110)
             font_color = job.get("font_color", "#00FFFF")
             style_preset = job.get("style_preset", "classic")
             st.write(f"Font: {font_name} | Size: {font_size}px | Color: {font_color} | Style: {style_preset}")
