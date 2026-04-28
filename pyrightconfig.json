@@ -1,0 +1,16 @@
+{
+  "typeCheckingMode": "basic",
+  "venvPath": "${workspaceFolder}/.venv",
+  "pythonVersion": "3.13",
+  "include": ["app", "interfaces"],
+  "exclude": [
+    "**/node_modules",
+    "**/__pycache__",
+    "**/.*",
+    ".venv",
+    "storage",
+    ".git",
+    ".pytest_cache"
+  ],
+  "extraPaths": ["${workspaceFolder}"]
+}

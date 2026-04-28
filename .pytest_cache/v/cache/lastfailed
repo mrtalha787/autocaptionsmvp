@@ -1,0 +1,5 @@
+{
+  "backend/tests/test_integration.py::TestAuthIntegration::test_register_user": true,
+  "backend/tests/test_integration.py::TestAuthIntegration::test_login_user": true,
+  "backend/tests/test_integration.py::TestAuthIntegration::test_get_current_user": true
+}
