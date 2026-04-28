@@ -14,8 +14,6 @@ import os
 import sys
 
 from app.ass_renderer import build_ass 
-from app.text_clip_renderer import render_text_clips
-
 
 def render_captions(
     video_path: str | Path,

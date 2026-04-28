@@ -393,7 +393,7 @@ with cust_col1:
         help="Select caption font family"
     )
 with cust_col2:
-    font_size = st.slider("Font size", 60, 180, 110, step=5, help="Caption size in pixels")
+    font_size = st.slider("Font size", 00, 120, 12, step=5, help="Caption size in pixels")
 with cust_col3:
     font_color = st.color_picker("Font color", "#00FFFF", help="Select caption color")
 
@@ -481,7 +481,7 @@ else:
             
             # Show caption styling
             font_name = job.get("font_name", "Arial")
-            font_size = job.get("font_size", 110)
+            font_size = job.get("font_size", 12)
             font_color = job.get("font_color", "#00FFFF")
             style_preset = job.get("style_preset", "classic")
             st.write(f"Font: {font_name} | Size: {font_size}px | Color: {font_color} | Style: {style_preset}")
