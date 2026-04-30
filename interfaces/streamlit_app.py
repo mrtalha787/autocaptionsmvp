@@ -352,7 +352,7 @@ with style_col1:
         index=0,
     )
 with style_col2:
-    font_size = st.slider("Font size", 50, 200, 110, step=5)
+    font_size = st.slider("Font size", 0, 120, 60, step=5)
 with style_col3:
     font_color = st.color_picker("Font color", "#00FFFF")
 
