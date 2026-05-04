@@ -124,6 +124,12 @@ def _add_to_queue(
         st.warning("Upload at least one video to add it to the queue.")
         return
 
+    # Enforce 10-video limit
+    MAX_VIDEOS_PER_BATCH = 10
+    if len(files) > MAX_VIDEOS_PER_BATCH:
+        st.error(f"❌ Cannot add more than {MAX_VIDEOS_PER_BATCH} videos at once. You selected {len(files)} videos.")
+        return
+
     added = 0
     skipped = 0
 
@@ -363,6 +369,13 @@ st.subheader("Build your queue (max 10 videos per session)")
 uploaded_files = st.file_uploader(
     "Upload one or more videos", type=["mp4", "mov", "mkv"], accept_multiple_files=True
 )
+
+# Validate and limit to 10 videos
+MAX_VIDEOS_PER_UPLOAD = 10
+if uploaded_files and len(uploaded_files) > MAX_VIDEOS_PER_UPLOAD:
+    st.error(f"❌ You selected {len(uploaded_files)} videos, but the maximum is {MAX_VIDEOS_PER_UPLOAD}. Please select {MAX_VIDEOS_PER_UPLOAD} or fewer videos.")
+    uploaded_files = uploaded_files[:MAX_VIDEOS_PER_UPLOAD]
+    st.info(f"Only the first {MAX_VIDEOS_PER_UPLOAD} videos will be processed.")
 
 pos_x = st.slider("Horizontal position (%)", 0, 100, 50, step=1)
 pos_y = st.slider("Vertical position (%)", 0, 100, 50, step=1)
