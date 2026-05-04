@@ -12,6 +12,14 @@ import time
 import os
 import sys
 
+from app.file_validator import validate_extracted_audio, FileValidationError
+
+
+class AudioExtractionError(Exception):
+    """Raised when audio extraction fails."""
+    pass
+
+
 def extract_audio(video_path: str | Path, output_dir: str | Path) -> Path:
     """
     Extract audio from a video file using ffmpeg.
@@ -43,11 +51,46 @@ def extract_audio(video_path: str | Path, output_dir: str | Path) -> Path:
     ]
     print(f"[AUDIO] Executing FFmpeg extraction command...", file=sys.stderr)
     try:
-        subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        print(f"[AUDIO] Audio extraction completed successfully - {audio_path}", file=sys.stderr)
-    except subprocess.CalledProcessError as e:
-        print(f"[AUDIO] ERROR - FFmpeg extraction failed with code {e.returncode}", file=sys.stderr)
-        raise
+        result = subprocess.run(
+            cmd,
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=300,
+        )
+        
+        if result.returncode != 0:
+            stderr = result.stderr.decode('utf-8', errors='ignore') if result.stderr else ""
+            error_msg = (
+                f"FFmpeg extraction failed with code {result.returncode}. "
+                f"The video file may be corrupted or in an unsupported format. "
+                f"Details: {stderr[:300]}"
+            )
+            print(f"[AUDIO] ERROR - {error_msg}", file=sys.stderr)
+            raise AudioExtractionError(error_msg)
+        
+        # Validate extracted audio
+        try:
+            validate_extracted_audio(audio_path, min_duration=0.5)
+            print(f"[AUDIO] Audio extraction completed and validated - {audio_path}", file=sys.stderr)
+        except FileValidationError as e:
+            print(f"[AUDIO] ERROR - Audio validation failed: {e}", file=sys.stderr)
+            # Clean up corrupted audio file
+            if audio_path.exists():
+                audio_path.unlink()
+                print(f"[AUDIO] Cleaned up corrupted audio file", file=sys.stderr)
+            raise AudioExtractionError(str(e))
+            
+    except subprocess.TimeoutExpired:
+        error_msg = "Audio extraction timed out (exceeded 5 minutes). Video file may be corrupted."
+        print(f"[AUDIO] ERROR - {error_msg}", file=sys.stderr)
+        if audio_path.exists():
+            audio_path.unlink()
+        raise AudioExtractionError(error_msg)
+    except FileNotFoundError:
+        error_msg = "FFmpeg not found. Please ensure FFmpeg is installed and in PATH."
+        print(f"[AUDIO] ERROR - {error_msg}", file=sys.stderr)
+        raise AudioExtractionError(error_msg)
     return audio_path
 
 

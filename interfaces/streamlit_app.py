@@ -16,11 +16,12 @@ BASE_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BASE_DIR))
 print(f"[STREAMLIT] Base directory: {BASE_DIR}", file=sys.stderr)
 
-from app.transcribe import transcribe_audio
+from app.transcribe import transcribe_audio, TranscriptionError
 from app.captions import tag_emphasis, group_words, detect_emphasis_words
 from app.burner import render_captions
 from app.auth import authenticate_user, register_user, load_users, save_users
-from app.audio import extract_audio, ensure_storage_dirs
+from app.audio import extract_audio, ensure_storage_dirs, AudioExtractionError
+from app.file_validator import validate_uploaded_file, FileValidationError
 
 MAX_QUEUE = 10  # Max pending jobs per user
 STORAGE_DIR = BASE_DIR / "storage"
@@ -154,14 +155,26 @@ def _add_to_queue(
             skipped += 1
             continue
 
-        # Save uploaded file to uploads directory
-        print(f"[STREAMLIT] Saving file to storage...", file=sys.stderr)
+        # Save uploaded file to temporary location for validation
+        print(f"[STREAMLIT] Saving file to temporary location for validation...", file=sys.stderr)
         with TemporaryDirectory() as td:
             temp_dir = Path(td)
-            video_path = temp_dir / f"{int(time.time() * 1000)}_{f.name}"
-            video_path.write_bytes(data)
+            temp_video_path = temp_dir / f"{int(time.time() * 1000)}_{f.name}"
+            temp_video_path.write_bytes(data)
+            
+            # Validate file before processing
+            try:
+                validate_uploaded_file(temp_video_path)
+                print(f"[STREAMLIT] File validation successful", file=sys.stderr)
+            except FileValidationError as e:
+                error_msg = str(e)
+                print(f"[STREAMLIT] File validation failed: {error_msg}", file=sys.stderr)
+                st.error(f"❌ {f.name} - Validation failed: {error_msg}")
+                skipped += 1
+                continue
 
-            # Copy to uploads storage
+            # Save to permanent storage
+            print(f"[STREAMLIT] Saving validated file to permanent storage...", file=sys.stderr)
             timestamp = int(time.time() * 1000)
             safe_filename = f"{username}_{timestamp}_{f.name}"
             upload_dest = UPLOADS_DIR / safe_filename
@@ -300,12 +313,33 @@ def _process_queue(username: str):
 
                 st.caption(f"Finished {job['filename']} in {burn_result['burn_seconds']:.2f}s")
 
-            except Exception as exc:
-                print(f"[STREAMLIT] ERROR processing job - {type(exc).__name__}: {str(exc)}", file=sys.stderr)
+            except AudioExtractionError as exc:
+                error_msg = (
+                    f"Audio extraction failed: {str(exc)} "
+                    f"This usually means the video file is corrupted or in an unsupported format."
+                )
+                print(f"[STREAMLIT] ERROR - Audio extraction failed: {exc}", file=sys.stderr)
                 job["status"] = "error"
                 job["error_message"] = str(exc)
                 _save_job_to_file(job)
-                st.error(f"{job['filename']} failed: {exc}")
+                st.error(f"❌ {job['filename']} failed: {error_msg}")
+            except TranscriptionError as exc:
+                error_msg = (
+                    f"Transcription failed: {str(exc)} "
+                    f"The extracted audio may be corrupted or too short."
+                )
+                print(f"[STREAMLIT] ERROR - Transcription failed: {exc}", file=sys.stderr)
+                job["status"] = "error"
+                job["error_message"] = str(exc)
+                _save_job_to_file(job)
+                st.error(f"❌ {job['filename']} failed: {error_msg}")
+            except Exception as exc:
+                error_msg = f"{type(exc).__name__}: {str(exc)}"
+                print(f"[STREAMLIT] ERROR processing job - {error_msg}", file=sys.stderr)
+                job["status"] = "error"
+                job["error_message"] = error_msg
+                _save_job_to_file(job)
+                st.error(f"❌ {job['filename']} failed: {error_msg}")
             finally:
                 print(f"[STREAMLIT] Cleaning up resources...", file=sys.stderr)
                 gc.collect()
@@ -365,7 +399,12 @@ st.sidebar.write(f"Total jobs: {len(user_jobs)}")
 st.sidebar.write(f"Pending: {pending_count}")
 st.sidebar.write(f"Queue limit: {MAX_QUEUE}")
 
-st.subheader("Build your queue (max 10 videos per session)")
+st.subheader("📹 Build your queue (max 10 videos per session)")
+st.info(
+    "✓ Supported formats: MP4, MOV, MKV, AVI, WebM, FLV, WMV\n"
+    "✓ Min size: 1 MB | Max size: 5 GB\n"
+    "⚠️ Files are validated for corruption before processing"
+)
 uploaded_files = st.file_uploader(
     "Upload one or more videos", type=["mp4", "mov", "mkv"], accept_multiple_files=True
 )
